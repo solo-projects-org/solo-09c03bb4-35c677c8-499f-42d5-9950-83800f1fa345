@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>抽查单 {{ order.id }} · 月报抽查工单核对</title>
+  <style>
+    :root { --line: #d8dee6; --blue: #1f5fbf; --bg: #f5f7fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+           background: var(--bg); color: #1d2733; }
+    header { background: #10345f; color: #fff; padding: 18px 28px; }
+    header h1 { margin: 0; font-size: 20px; }
+    header p { margin: 6px 0 0; font-size: 13px; opacity: .82; }
+    main { max-width: 1024px; margin: 24px auto; padding: 0 16px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 10px;
+            padding: 20px 24px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; }
+    th { background: #eef2f7; font-weight: 600; color: #334155; }
+    tr:last-child td { border-bottom: 0; }
+    h2 { font-size: 16px; margin: 0 0 14px; }
+    .muted { color: #64748b; font-size: 12px; }
+    .flash { background: #e8f3ff; border: 1px solid #b6d7f5; color: #104c87;
+             padding: 10px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 18px; }
+    .warn { background: #fff7e6; border: 1px solid #f0c36d; color: #8a5a00;
+            padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 18px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; font-size: 13px; }
+    .pill { background: #eef2f7; border-radius: 999px; padding: 5px 12px; }
+    button { background: var(--blue); color: #fff; border: 0; border-radius: 6px;
+             padding: 9px 22px; font-size: 14px; cursor: pointer; }
+    button:hover { background: #184c99; }
+    .badge { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+    .b-pending   { background: #fff1d6; color: #8a5a00; }
+    .b-confirmed { background: #dcf5e3; color: #146c2e; }
+    .b-missing   { background: #fde2e2; color: #9b1c1c; }
+    .b-withdrawn { background: #e2e8f0; color: #475569; }
+    a.back { font-size: 13px; color: var(--blue); text-decoration: none; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>抽查单 {{ order.id }}</h1>
+  <p>月份 {{ order.month }} · 建单时间 {{ order.created_at }} (UTC)</p>
+</header>
+<main>
+  <p><a class="back" href="/">&larr; 返回抽查单列表</a></p>
+
+  {% with messages = get_flashed_messages() %}
+    {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  {% if summary.withdrawn %}
+  <div class="warn" role="alert">
+    <strong>原版已撤下：</strong>{{ summary.withdrawn }} 项所查的月报版号在站点已查不到
+    （不存在或已撤下），这些项无法续取。请与站点核对版号后<strong>重新发起抽查</strong>。
+  </div>
+  {% endif %}
+
+  <section class="card">
+    <div class="meta">
+      <span class="pill">共 {{ summary.total }} 项</span>
+      <span class="pill">已确认 {{ summary.confirmed }}</span>
+      <span class="pill">缺凭证 {{ summary.missing }}</span>
+      <span class="pill">待取回 {{ summary.pending }}</span>
+      <span class="pill">原版已撤下 {{ summary.withdrawn }}</span>
+    </div>
+    {% if summary.pending %}
+    <form method="post" action="/orders/{{ order.id }}/fetch">
+      <button type="submit">取数 / 续取（还有 {{ summary.pending }} 项待取回）</button>
+      <p class="muted">只对待取回的项逐条向站点点查；已确认项保留原结果，不会被覆盖。站点恢复后再点即可续取。</p>
+    </form>
+    {% else %}
+    <p class="muted">本单所有项均已有结果；已确认项保留原结果，迟到响应不会覆盖。</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>抽中明细（{{ summary.total }} 项）</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>#</th><th>站点</th><th>月报版号</th><th>combo_id</th>
+        <th>凭证序号</th><th>申报次数</th><th>状态</th><th>工单号</th><th>备注</th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for item in order["items"] %}
+      <tr>
+        <td>{{ item.n }}</td>
+        <td>{{ item.station_label }}</td>
+        <td>{{ item.version }}</td>
+        <td>{{ item.combo_id }}</td>
+        <td>{{ item.seq }}</td>
+        <td>{{ item.declared }}</td>
+        <td><span class="badge b-{{ item.status }}">{{ status_labels[item.status] }}</span></td>
+        <td>{% if item.work_order %}<strong>{{ item.work_order }}</strong>{% else %}—{% endif %}</td>
+        <td class="muted">{{ item.note }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</main>
+</body>
+</html>

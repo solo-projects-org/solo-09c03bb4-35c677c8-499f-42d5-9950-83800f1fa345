@@ -33,9 +33,16 @@ services:
       STATION_A_LABEL: "维修站A"
       STATION_B_LABEL: "维修站B"
       HTTP_TIMEOUT: "5"
+      WEB_DATA_DIR: /data
+    volumes:
+      # 抽查单持久化：重启 web 后仍可在原单上续取
+      - web-data:/data
     ports:
       - "8000:8000"
     depends_on:
       - station-a
       - station-b
     restart: unless-stopped
+
+volumes:
+  web-data:
